@@ -1,0 +1,42 @@
+version: '3'
+services:
+  keycloak:
+    image: jboss/keycloak
+    ports:
+      - 8080:8080
+      - 8433:8433
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+      - KEYCLOAK_LOGLEVEL=DEBUG
+      - KEYCLOAK_IMPORT=/opt/keycloak/realm-export.json
+    restart: always
+    volumes:
+      - ./bundles/sirix-rest-api/src/test/resources/realm-export.json:/opt/keycloak/realm-export.json
+      - ./bundles/sirix-rest-api/src/test/resources/create-sirix-users.sh:/opt/jboss/startup-scripts/create-sirix-users.sh
+    command:
+      - "-b 0.0.0.0"
+      - "-bmanagement 0.0.0.0"
+    networks:
+      - auth-network
+  server:
+    build: .
+    image: sirixdb/sirix
+    ports:
+      - "9443:9443"
+    restart: always
+    volumes:
+      - /opt/sirix
+      - ./bundles/sirix-rest-api/src/main/resources/cert.pem:/opt/sirix/sirix-data/cert.pem
+      - ./bundles/sirix-rest-api/src/main/resources/key.pem:/opt/sirix/sirix-data/key.pem
+      - ./bundles/sirix-rest-api/src/main/resources/sirix-conf.json:/opt/sirix/sirix-conf.json
+    depends_on:
+      - keycloak
+    networks:
+      - auth-network
+    links:
+      - keycloak
+networks:
+  auth-network:
+    driver: bridge
+
